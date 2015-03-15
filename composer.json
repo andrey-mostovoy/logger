@@ -1,0 +1,22 @@
+{
+  "name": "stalk/logger",
+  "description": "Simple logging system",
+  "keywords": ["log", "logger", "logging"],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "andrey-mostovoy",
+      "email": "stalk.4.me@gmail.com"
+    }
+  ],
+  "autoload": {
+    "psr-4": {"stalk\\Logger\\": "Logger"}
+  },
+  "require": {
+    "stalk/config": "1.0.*",
+    "monolog/monolog": "1.13.*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "4.4.*"
+  }
+}
