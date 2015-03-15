@@ -2,6 +2,7 @@
   "name": "stalk/logger",
   "description": "Simple logging system",
   "keywords": ["log", "logger", "logging"],
+  "type": "library",
   "license": "MIT",
   "authors": [
     {
