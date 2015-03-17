@@ -71,7 +71,7 @@ class LoggerFactory {
     private static function createLogger($type) {
         $Logger = new Logger($type);
 
-        foreach (Config::getInstance()->get('logger.handlers') as $handlerType => $handlerConfig) {
+        foreach (Config::getInstance()->get('logger', 'handlers') as $handlerType => $handlerConfig) {
             $Handler = static::createHandler($handlerType, $handlerConfig);
             if (!$Handler) {
                 continue;
