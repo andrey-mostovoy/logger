@@ -1,6 +1,8 @@
 <?php
 namespace stalk\Logger;
 
+use Monolog\Formatter\FormatterInterface;
+use Monolog\Formatter\LogstashFormatter;
 use Monolog\Handler\AbstractHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
@@ -12,18 +14,19 @@ use stalk\Config\Config;
  * Для работы логов нужен конфиг `logger` в формате:
  * 'handlers' => [
  *   'stream' => [
- *     'path'        => PATH_LOG . 'Root.log',
+ *     'path'        => LOG_PATH . 'Root.log',
  *     'level'       => Logger::DEBUG,
+ *     'formatter'   => LogFormatter::class,
+ *     'format'      => "%datetime% %level_name% %channel% %context%: %message%\n",
+ *     'date_format' => 'Y-m-d H:i:s',
  *   ],
- *   'other_handler' => [
+ *   'some_handler' => [
+ *     'handler_param_key'  => 'handler_param_value',
+ *     'formatter'           => SomeFormatter::class,
+ *     'formatter_param_key' => 'formatter_param_value',
  *     ...
  *   ],
- *   ...
  * ],
- * 'formatter' => [
- *   'format'      => "%datetime% %level_name% %channel% %context%: %message%\n",
- *   'date_format' => 'Y-m-d H:i:s',
- * ]
  *
  * @author andrey-mostovoy <stalk.4.me@gmail.com>
  */
@@ -37,11 +40,6 @@ class LoggerFactory {
      * @var GlobalContext Экземпляр глобального контекста.
      */
     private static $GlobalContext = null;
-
-    /**
-     * @var LogFormatter Экземпляр потокового форматера.
-     */
-    private static $LogFormatter = null;
 
     /**
      * @return Logger Экземпляр базового логгера.
@@ -76,7 +74,7 @@ class LoggerFactory {
             if (!$Handler) {
                 continue;
             }
-            $Handler->setFormatter(static::getLogFormatter());
+            $Handler->setFormatter(static::createLogFormatter($handlerConfig));
             $Logger->pushHandler($Handler);
         }
 
@@ -90,18 +88,20 @@ class LoggerFactory {
      * @param array $handlerConfig Конфиг хэндлера.
      * @return AbstractHandler
      */
-    protected static function createHandler($handlerType, $handlerConfig) {
+    protected static function createHandler($handlerType, array $handlerConfig) {
         switch ($handlerType) {
             case 'stream':
                 return new StreamHandler($handlerConfig['path'], $handlerConfig['level']);
             case 'syslog-logstash':
                 return new LogstashSyslogUdpHandler(
-                    $handlerConfig['source_program'],
+                    $handlerConfig['app_name'],
                     $handlerConfig['source_host'],
                     $handlerConfig['syslog_host'],
                     $handlerConfig['syslog_port'],
                     $handlerConfig['syslog_facility'],
                     $handlerConfig['level']);
+            case 'uberlog':
+                return new StreamHandler('/var/log/uberlog/uberlog.log', $handlerConfig['level'], true, 0666, true);
             default:
                 return null;
         }
@@ -109,14 +109,19 @@ class LoggerFactory {
 
     /**
      * Получаем объект форматирования записей логов для файлов.
-     * @return LogFormatter Экземпляр потокового форматера.
+     * @param array $config конфиг
+     * @return FormatterInterface экземпляр форматера
      */
-    private static function getLogFormatter() {
-        if (!isset(self::$LogFormatter)) {
-            $formatterConfig = Config::getInstance()->get('logger', 'formatter');
-            self::$LogFormatter = new LogFormatter($formatterConfig['format'], $formatterConfig['date_format'], true);
+    protected static function createLogFormatter(array $config) {
+        if (isset($config['formatter'])) {
+            switch ($config['formatter']) {
+                case LogFormatter::class:
+                    return new LogFormatter($config['format'], $config['date_format'], true);
+                case LogstashFormatter::class:
+                    return new LogstashFormatter($config['source_program'], $config['source_host'], 'extra_', 'ctx_', LogstashFormatter::V1);
+            }
         }
-        return self::$LogFormatter;
+        return new LogFormatter();
     }
 
     /**
